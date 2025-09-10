@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuneScope - Audio Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1c1c1c;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+
+        /* Removed .gradient-text from here as it's no longer applied to h1 */
+
+        /* Original Metronome H1 Style */
+        h1 {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #d4af37;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+            text-align: center;
+        }
+
+        .section-box {
+            @apply bg-stone-900/50 rounded-xl p-6 md:p-8 shadow-lg border border-transparent transition-all duration-300 ease-in-out w-full max-w-4xl mb-8;
+        }
+        .section-box:hover {
+            @apply shadow-xl shadow-amber-500/30 border-amber-500/70;
+        }
+
+        .control-button {
+            @apply py-3 px-8 rounded-lg font-semibold shadow-md transition-colors duration-300;
+        }
+
+        .control-button-primary {
+            @apply bg-amber-500 text-stone-900 hover:bg-amber-600 hover:shadow-lg hover:shadow-amber-400/40;
+        }
+
+        .control-button-secondary {
+            @apply bg-stone-700 text-stone-100 hover:bg-stone-600 hover:shadow-lg hover:shadow-stone-500/40;
+        }
+
+        .control-button-danger {
+            @apply bg-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-500/40;
+        }
+
+        input[type="file"] {
+            @apply block w-full text-sm text-stone-300
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-full file:border-0
+            file:text-sm file:font-semibold
+            file:bg-amber-500 file:text-stone-900
+            hover:file:bg-amber-600;
+            cursor: pointer;
+        }
+
+        audio {
+            @apply w-full my-4 rounded-md;
+            filter: invert(10%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(150%) contrast(100%);
+        }
+
+        #current-note-display {
+            @apply text-5xl font-extrabold text-amber-400 text-center mb-4;
+        }
+        #current-frequency-display {
+            @apply text-xl text-stone-300 text-center mb-6;
+        }
+
+        #notes-display-area {
+            @apply bg-stone-800 rounded-lg p-4 max-h-40 overflow-y-auto text-sm text-stone-300;
+        }
+        #notes-display-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        #notes-display-area::-webkit-scrollbar-track {
+            background: #282828;
+            border-radius: 10px;
+        }
+        #notes-display-area::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 10px;
+        }
+        #notes-display-area::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+
+
+        #scale-suggestions-area {
+            @apply bg-stone-800 rounded-lg p-4 mt-6;
+        }
+        #scale-suggestions-area h3 {
+            @apply text-xl font-bold text-amber-400 mb-4;
+        }
+        #scale-suggestions-list {
+            @apply list-none p-0;
+        }
+        #scale-suggestions-list li {
+            @apply bg-stone-700 text-stone-200 px-4 py-2 rounded-md mb-2;
+        }
+        #scale-suggestions-list li strong {
+            @apply text-amber-300;
+        }
+        #scale-suggestions-list li span {
+            @apply text-stone-400 text-sm ml-2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Audio Analyzer</h1>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        <section class="section-box">
+            <h2 class="text-2xl font-semibold text-white mb-4">Load Your Audio</h2>
+            <input type="file" id="audioFile" accept="audio/*">
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="loadAudioButton" class="control-button control-button-primary">Load Audio</button>
+            </div>
+        </section>
+
+        <section class="section-box">
+            <h2 class="text-2xl font-semibold text-white mb-4">Playback & Analysis</h2>
+            <audio id="audioPlayer" controls></audio>
+            
+            <p id="current-note-display">--</p>
+            <p id="current-frequency-display">-- Hz</p>
+
+            <div id="notes-display-area" class="mt-4">
+                <p class="text-stone-400 text-sm italic">Notes detected during playback will appear here.</p>
+            </div>
+
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="clearNotesButton" class="control-button control-button-secondary">Clear Detected Notes</button>
+                <button id="identifyScalesButton" class="control-button control-button-primary">Identify Scale</button>
+            </div>
+        </section>
+
+        <section class="section-box" id="scale-results-section">
+            <h2 class="text-2xl font-semibold text-white mb-4">Suggested Scales</h2>
+            <div id="scale-suggestions-area">
+                <ul id="scale-suggestions-list">
+                    <li>No scales suggested yet.</li>
+                </ul>
+            </div>
+        </section>
+
+        <button onclick="window.location.href='index.html'" class="control-button control-button-secondary mt-8">← Back to Home</button>
+    </main>
+
+    <script>
+        let audioContext;
+        let analyserNode;
+        let audioSourceNode;
+        let animationFrameId;
+        let isAnalyzing = false;
+        let audioBuffer;
+
+        const MIN_DETECTABLE_FREQUENCY = 60;
+        const MAX_DETECTABLE_FREQUENCY = 1200;
+        const A4_FREQ = 440;
+        const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+        let collectedNotes = new Set();
+
+        const audioFileInput = document.getElementById('audioFile');
+        const loadAudioButton = document.getElementById('loadAudioButton');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const currentNoteDisplay = document.getElementById('current-note-display');
+        const currentFrequencyDisplay = document.getElementById('current-frequency-display');
+        const notesDisplayArea = document.getElementById('notes-display-area');
+        const clearNotesButton = document.getElementById('clearNotesButton');
+        const identifyScalesButton = document.getElementById('identifyScalesButton');
+        const scaleSuggestionsList = document.getElementById('scale-suggestions-list');
+
+        const scalePatterns = {
+            'Major Scale': [0, 2, 4, 5, 7, 9, 11],
+            'Natural Minor Scale': [0, 2, 3, 5, 7, 8, 10],
+            'Harmonic Minor Scale': [0, 2, 3, 5, 7, 8, 11],
+            'Blues Scale': [0, 3, 5, 6, 7, 10],
+            'Ionian Mode (Major)': [0, 2, 4, 5, 7, 9, 11],
+            'Dorian Mode': [0, 2, 3, 5, 7, 9, 10],
+            'Phrygian Mode': [0, 1, 3, 5, 7, 8, 10],
+            'Lydian Mode': [0, 2, 4, 6, 7, 9, 11],
+            'Mixolydian Mode': [0, 2, 4, 5, 7, 9, 10],
+            'Aeolian Mode (Natural Minor)': [0, 2, 3, 5, 7, 8, 10],
+            'Locrian Mode': [0, 1, 3, 5, 6, 8, 10],
+        };
+
+        loadAudioButton.addEventListener('click', () => {
+            const file = audioFileInput.files[0];
+            if (!file) {
+                alert('Please select an audio file first.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const audioData = e.target.result;
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                try {
+                    audioBuffer = await audioContext.decodeAudioData(audioData);
+                    audioPlayer.src = URL.createObjectURL(file);
+                    audioPlayer.load();
+                    alert('Audio loaded successfully!');
+                    resetAnalysisState();
+                } catch (error) {
+                    console.error('Error decoding audio:', error);
+                    alert('Failed to load audio. Please ensure it is a valid audio file.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        audioPlayer.addEventListener('play', startAnalysis);
+        audioPlayer.addEventListener('pause', stopAnalysis);
+        audioPlayer.addEventListener('ended', stopAnalysis);
+
+        function resetAnalysisState() {
+            stopAnalysis();
+            collectedNotes.clear();
+            notesDisplayArea.innerHTML = '<p class="text-stone-400 text-sm italic">Notes detected during playback will appear here.</p>';
+            currentNoteDisplay.textContent = '--';
+            currentFrequencyDisplay.textContent = '-- Hz';
+            scaleSuggestionsList.innerHTML = '<li>No scales suggested yet.</li>';
+        }
+
+        function startAnalysis() {
+            if (isAnalyzing || !audioBuffer) return;
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            analyserNode = audioContext.createAnalyser();
+            analyserNode.fftSize = 2048;
+            analyserNode.minDecibels = -90;
+            analyserNode.maxDecibels = -10;
+            analyserNode.smoothingTimeConstant = 0.8;
+
+            audioSourceNode = audioContext.createBufferSource();
+            audioSourceNode.buffer = audioBuffer;
+
+            const mediaElementSource = audioContext.createMediaElementSource(audioPlayer);
+            mediaElementSource.connect(analyserNode);
+            analyserNode.connect(audioContext.destination);
+
+            isAnalyzing = true;
+            analyzePitchLoop();
+            console.log("Audio analysis started.");
+        }
+
+        function stopAnalysis() {
+            if (!isAnalyzing) return;
+
+            cancelAnimationFrame(animationFrameId);
+            if (analyserNode) analyserNode.disconnect();
+            if (audioSourceNode) audioSourceNode.disconnect();
+            isAnalyzing = false;
+            console.log("Audio analysis stopped.");
+        }
+
+        function getPitch(audioBufferData, sampleRate) {
+            const bufferSize = audioBufferData.length;
+            const MAX_SAMPLES = Math.floor(sampleRate / MIN_DETECTABLE_FREQUENCY);
+            const GOOD_ENOUGH_CORRELATION = 0.9;
+
+            let bestCorrelation = -1;
+            let bestOffset = -1;
+            let currentCorrelation;
+
+            let rms = 0;
+            for (let i = 0; i < bufferSize; i++) {
+                rms += audioBufferData[i] * audioBufferData[i];
+            }
+            rms = Math.sqrt(rms / bufferSize);
+
+            if (rms < 0.01) {
+                return 0;
+            }
+
+            for (let offset = 0; offset < MAX_SAMPLES; offset++) {
+                currentCorrelation = 0;
+                for (let i = 0; i < bufferSize - offset; i++) {
+                    currentCorrelation += audioBufferData[i] * audioBufferData[i + offset];
+                }
+
+                if (currentCorrelation > GOOD_ENOUGH_CORRELATION) {
+                    bestCorrelation = currentCorrelation;
+                    bestOffset = offset;
+                    break;
+                }
+
+                if (currentCorrelation > bestCorrelation) {
+                    bestCorrelation = currentCorrelation;
+                    bestOffset = offset;
+                }
+            }
+
+            if (bestOffset === -1 || bestOffset === 0) return 0;
+
+            const frequency = sampleRate / bestOffset;
+
+            if (frequency < MIN_DETECTABLE_FREQUENCY || frequency > MAX_DETECTABLE_FREQUENCY) {
+                return 0;
+            }
+
+            return frequency;
+        }
+
+        function frequencyToMidi(frequency) {
+            if (frequency === 0) return null;
+            return 12 * (Math.log(frequency / A4_FREQ) / Math.log(2)) + 69;
+        }
+
+        function midiToNoteName(midiNote) {
+            const noteIndex = (midiNote % 12 + 12) % 12;
+            const octave = Math.floor(midiNote / 12) - 1;
+            return `${NOTE_NAMES[noteIndex]}${octave}`;
+        }
+
+        let lastDetectedNote = null;
+        function analyzePitchLoop() {
+            if (!isAnalyzing) return;
+
+            const bufferLength = analyserNode.fftSize;
+            const dataArray = new Float32Array(bufferLength);
+            analyserNode.getFloatTimeDomainData(dataArray);
+
+            const detectedFrequency = getPitch(dataArray, audioContext.sampleRate);
+
+            let noteText = '--';
+            let hertzText = '-- Hz';
+
+            if (detectedFrequency > 0) {
+                const midiNote = frequencyToMidi(detectedFrequency);
+                if (midiNote !== null) {
+                    const roundedMidiNote = Math.round(midiNote);
+                    const noteIndex = (roundedMidiNote % 12 + 12) % 12;
+                    const octave = Math.floor(roundedMidiNote / 12) - 1;
+
+                    noteText = `${NOTE_NAMES[noteIndex]}${octave}`;
+                    hertzText = `${detectedFrequency.toFixed(2)} Hz`;
+
+                    if (noteIndex !== lastDetectedNote) {
+                        collectedNotes.add(noteIndex);
+                        updateNotesDisplayArea();
+                        lastDetectedNote = noteIndex;
+                    }
+                }
+            } else {
+                lastDetectedNote = null;
+            }
+
+            currentNoteDisplay.textContent = noteText;
+            currentFrequencyDisplay.textContent = hertzText;
+
+            animationFrameId = requestAnimationFrame(analyzePitchLoop);
+        }
+
+        function updateNotesDisplayArea() {
+            if (notesDisplayArea.children[0] && notesDisplayArea.children[0].tagName === 'P' && notesDisplayArea.children[0].classList.contains('italic')) {
+                notesDisplayArea.innerHTML = '';
+            }
+            const sortedNotes = Array.from(collectedNotes).sort((a, b) => a - b);
+            notesDisplayArea.innerHTML = sortedNotes.map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+            notesDisplayArea.scrollTop = notesDisplayArea.scrollHeight;
+        }
+
+        clearNotesButton.addEventListener('click', () => {
+            resetAnalysisState();
+        });
+
+        identifyScalesButton.addEventListener('click', () => {
+            if (collectedNotes.size === 0) {
+                scaleSuggestionsList.innerHTML = '<li>Please play some notes in the audio first.</li>';
+                return;
+            }
+
+            scaleSuggestionsList.innerHTML = '';
+            const inputNoteClasses = Array.from(collectedNotes).sort((a, b) => a - b);
+
+            let foundSuggestions = false;
+
+            for (let rootMidiClass = 0; rootMidiClass < 12; rootMidiClass++) {
+                const rootName = NOTE_NAMES[rootMidiClass];
+
+                for (const scaleName in scalePatterns) {
+                    const pattern = scalePatterns[scaleName];
+                    const scaleNotes = new Set();
+
+                    pattern.forEach(interval => {
+                        scaleNotes.add((rootMidiClass + interval) % 12);
+                    });
+
+                    let allNotesFit = true;
+                    for (const inputNote of inputNoteClasses) {
+                        if (!scaleNotes.has(inputNote)) {
+                            allNotesFit = false;
+                            break;
+                        }
+                    }
+
+                    if (allNotesFit && collectedNotes.size > 0) {
+                        const li = document.createElement('li');
+                        const notesInScaleDisplay = Array.from(scaleNotes).sort((a, b) => a - b).map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+                        li.innerHTML = `<strong>${rootName} ${scaleName}</strong> <span>(${notesInScaleDisplay})</span>`;
+                        
+                        scaleSuggestionsList.appendChild(li);
+                        foundSuggestions = true;
+                    }
+                }
+            }
+
+            if (!foundSuggestions) {
+                scaleSuggestionsList.innerHTML = '<li>No common scales found for the detected notes. Try with a different audio or more distinct notes.</li>';
+            }
+        });
+
+        window.onload = () => {
+            resetAnalysisState();
+        };
+    </script>
+</body>
+</html>

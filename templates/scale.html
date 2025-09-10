@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Scale Identifier</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1c1c1c 0%, #0a0a0a 100%); /* Subtle dark gradient */
+            color: #e0e0e0; /* Off-white text for readability */
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        h1 {
+            color: #d4af37; /* Muted gold for heading */
+            margin-bottom: 35px; /* Slightly adjusted margin */
+            font-size: 2.8em; /* Slightly larger heading */
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.4); /* More pronounced glow */
+            text-align: center;
+        }
+
+        #input-notes-display {
+            background-color: #282828;
+            border-radius: 10px; /* Slightly more rounded */
+            padding: 25px 35px; /* Increased padding */
+            margin-bottom: 35px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); /* Deeper shadow */
+            text-align: center;
+            font-size: 1.6em; /* Slightly larger font */
+            color: #f0f0f0;
+            min-height: 60px; /* Slightly taller */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 90vw;
+            max-width: 800px;
+            border: 1px solid #444;
+            transition: box-shadow 0.3s ease;
+        }
+        #input-notes-display:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        #note-input-bar {
+            display: flex;
+            justify-content: center;
+            gap: 8px; /* Spacing between note buttons */
+            margin-bottom: 35px;
+            background-color: #0f0f0f;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            width: 90vw;
+            max-width: 950px;
+            flex-wrap: wrap; /* Allow notes to wrap on smaller screens */
+        }
+
+        .note-button {
+            padding: 15px 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            min-width: 50px; /* Ensure buttons have a minimum width */
+            text-align: center;
+        }
+
+        .note-button:hover {
+            background-color: #444;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .note-button.selected {
+            background-color: #d4af37; /* Yellow highlight */
+            color: #1c1c1c; /* Dark text for contrast */
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.8), inset 0 0 5px rgba(0, 0, 0, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .note-button:active {
+            transform: translateY(1px);
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.7);
+        }
+
+
+        #controls {
+            display: flex;
+            gap: 25px; /* Increased gap */
+            margin-bottom: 35px;
+        }
+
+        .control-button {
+            padding: 14px 32px; /* Larger buttons */
+            font-size: 1.2em; /* Larger font */
+            font-weight: 600; /* Bolder font */
+            border: 1px solid #d4af37;
+            border-radius: 8px; /* More rounded */
+            background-color: #282828;
+            color: #d4af37;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); /* More pronounced shadow */
+        }
+
+        .control-button:hover {
+            background-color: #3a3a3a;
+            color: #f0f0f0; /* White text on hover */
+            transform: translateY(-3px); /* More pronounced lift */
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .control-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #realtime-audio-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        #results-area {
+            background-color: #282828;
+            border-radius: 10px; /* More rounded */
+            padding: 25px 35px; /* Increased padding */
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); /* Deeper shadow */
+            width: 90vw;
+            max-width: 800px;
+            border: 1px solid #444;
+            transition: box-shadow 0.3s ease;
+        }
+        #results-area:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        #results-area h2 {
+            color: #d4af37;
+            font-size: 2em; /* Larger heading */
+            margin-bottom: 20px; /* More space */
+            text-align: center;
+            text-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+        }
+
+        /* Scale Suggestions as a Scrollbar - Similar to Pitch Detection Page */
+        #scale-suggestions {
+            list-style: none;
+            padding: 0;
+            display: flex; /* Changed to flex for horizontal scroll */
+            overflow-x: auto; /* Enable horizontal scrolling */
+            -webkit-overflow-scrolling: touch;
+            gap: 15px; /* Spacing between items */
+            height: 70px; /* Fixed height for the scrollbar */
+            align-items: center; /* Vertically center items */
+            margin-top: 0;
+            white-space: nowrap; /* Prevent items from wrapping */
+            /* Removed padding-bottom as scrollbar is hidden */
+        }
+
+        /* Hide scrollbar for a cleaner look */
+        #scale-suggestions::-webkit-scrollbar {
+            height: 0px;
+            background: transparent;
+        }
+        #scale-suggestions {
+            scrollbar-width: none; /* Firefox */
+        }
+
+        #scale-suggestions li {
+            /* Removed background-color, border, box-shadow for default state */
+            border-radius: 0; /* No rounded corners for a continuous look */
+            padding: 5px 12px; /* Small internal padding for visual space within the item */
+            margin-bottom: 0;
+            flex-shrink: 0; /* Prevent items from shrinking */
+            display: flex;
+            flex-direction: column; /* Keep name and notes stacked */
+            justify-content: center;
+            align-items: center; /* Center text within item */
+            font-size: 1.1em;
+            color: #666; /* Muted grey when not highlighted */
+            font-family: 'Consolas', 'Monaco', 'Lucida Console', monospace; /* Futuristic font */
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.2s ease, text-shadow 0.2s ease;
+            text-align: center; /* Ensure text is centered */
+        }
+
+        #scale-suggestions li:hover {
+            transform: translateY(-2px);
+            color: #e0e0e0; /* Lighter on hover */
+            text-shadow: 0 0 5px rgba(224, 224, 224, 0.5);
+        }
+
+        #scale-suggestions li.selected-scale {
+            color: #d4af37; /* Muted gold for highlighted text */
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.8); /* Stronger glow */
+            transform: scale(1.1); /* More pronounced scale when selected */
+        }
+
+        #scale-suggestions li.selected-scale strong {
+            color: #d4af37; /* Keep strong gold */
+        }
+        #scale-suggestions li.selected-scale .notes-in-scale {
+            color: #e0e0e0; /* Lighter grey for notes in selected */
+        }
+
+        #scale-suggestions li strong {
+            color: #e0e0e0; /* Default strong text color */
+            font-size: 1.1em;
+            margin-bottom: 3px;
+        }
+
+        #scale-suggestions li .notes-in-scale {
+            font-size: 0.85em; /* Slightly smaller notes font */
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>Musical Scale Identifier</h1>
+
+    <div id="input-notes-display">
+        Selected Notes: <span id="current-notes"></span>
+    </div>
+
+    <div id="note-input-bar">
+        </div>
+
+    <div id="realtime-audio-controls">
+        <button id="start-audio-button" class="control-button">Start Audio Input</button>
+        <button id="stop-audio-button" class="control-button">Stop Audio Input</button>
+    </div>
+
+    <div id="controls">
+        <button id="clear-notes-button" class="control-button">Clear Notes</button>
+        <button id="identify-scales-button" class="control-button">Identify Scales</button>
+    </div>
+
+    <div id="results-area">
+        <h2>Suggested Scales</h2>
+        <ul id="scale-suggestions">
+            <li>No notes selected yet.</li>
+        </ul>
+    </div>
+
+    <script>
+        let playedNotes = new Set();
+        const currentNotesDisplay = document.getElementById('current-notes');
+        const scaleSuggestionsList = document.getElementById('scale-suggestions');
+        const clearNotesButton = document.getElementById('clear-notes-button');
+        const identifyScalesButton = document.getElementById('identify-scales-button');
+        const noteInputBar = document.getElementById('note-input-bar');
+
+        const startAudioButton = document.getElementById('start-audio-button');
+        const stopAudioButton = document.getElementById('stop-audio-button');
+
+        let audioContext;
+        let analyser;
+        let mediaStreamSource;
+        let animationFrameId;
+        let isAudioRunning = false;
+
+        const scalePatterns = {
+            'Major Scale': [0, 2, 4, 5, 7, 9, 11],
+            'Natural Minor Scale': [0, 2, 3, 5, 7, 8, 10],
+            'Harmonic Minor Scale': [0, 2, 3, 5, 7, 8, 11],
+            'Blues Scale': [0, 3, 5, 6, 7, 10],
+            'Ionian Mode (Major)': [0, 2, 4, 5, 7, 9, 11],
+            'Dorian Mode': [0, 2, 3, 5, 7, 9, 10],
+            'Phrygian Mode': [0, 1, 3, 5, 7, 8, 10],
+            'Lydian Mode': [0, 2, 4, 6, 7, 9, 11],
+            'Mixolydian Mode': [0, 2, 4, 5, 7, 9, 10],
+            'Aeolian Mode (Natural Minor)': [0, 2, 3, 5, 7, 8, 10],
+            'Locrian Mode': [0, 1, 3, 5, 6, 8, 10],
+        };
+
+        const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+        // Function to create and append note buttons to the input bar
+        function createNoteInputButtons() {
+            noteInputBar.innerHTML = ''; // Clear existing buttons
+            NOTE_NAMES.forEach((noteName, index) => {
+                const button = document.createElement('button');
+                button.classList.add('note-button');
+                button.textContent = noteName;
+                button.dataset.midiClass = index; // Store the MIDI class for easy access
+
+                button.addEventListener('click', () => {
+                    // Only allow manual toggling if audio input is not running
+                    if (!isAudioRunning) {
+                        toggleNote(index, button);
+                    } else {
+                        alert("Please stop audio input to manually select notes.");
+                    }
+                });
+                noteInputBar.appendChild(button);
+            });
+        }
+
+        // Function to add/remove a note from the playedNotes set and update highlight
+        function toggleNote(midiClass, buttonElement) {
+            if (playedNotes.has(midiClass)) {
+                playedNotes.delete(midiClass);
+                if (buttonElement) buttonElement.classList.remove('selected');
+            } else {
+                playedNotes.add(midiClass);
+                if (buttonElement) buttonElement.classList.add('selected');
+            }
+            updatePlayedNotesDisplay();
+        }
+
+        function updatePlayedNotesDisplay() {
+            const sortedNotes = Array.from(playedNotes).sort((a, b) => a - b);
+            const displayNotes = sortedNotes.map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+            currentNotesDisplay.textContent = displayNotes || 'None';
+        }
+
+        function clearNotes() {
+            playedNotes.clear();
+            updatePlayedNotesDisplay();
+            scaleSuggestionsList.innerHTML = '<li>No notes selected yet.</li>';
+            // Also unhighlight all note buttons
+            document.querySelectorAll('.note-button').forEach(button => {
+                button.classList.remove('selected');
+            });
+        }
+
+        function identifyScales() {
+            if (playedNotes.size === 0) {
+                scaleSuggestionsList.innerHTML = '<li>Please select some notes first.</li>';
+                return;
+            }
+
+            scaleSuggestionsList.innerHTML = '';
+            const inputNoteClasses = Array.from(playedNotes).sort((a, b) => a - b);
+
+            let foundSuggestions = false;
+
+            for (let rootMidiClass = 0; rootMidiClass < 12; rootMidiClass++) {
+                const rootName = NOTE_NAMES[rootMidiClass];
+
+                for (const scaleName in scalePatterns) {
+                    const pattern = scalePatterns[scaleName];
+                    const scaleNotes = new Set();
+
+                    pattern.forEach(interval => {
+                        scaleNotes.add((rootMidiClass + interval) % 12);
+                    });
+
+                    let allNotesFit = true;
+                    for (const inputNote of inputNoteClasses) {
+                        if (!scaleNotes.has(inputNote)) {
+                            allNotesFit = false;
+                            break;
+                        }
+                    }
+
+                    if (allNotesFit && playedNotes.size > 0) {
+                        const li = document.createElement('li');
+                        const notesInScaleDisplay = Array.from(scaleNotes).sort((a, b) => a - b).map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+                        li.innerHTML = `<strong>${rootName} ${scaleName}</strong> <span class="notes-in-scale">(${notesInScaleDisplay})</span>`;
+                        
+                        // Add click listener for highlighting
+                        li.addEventListener('click', () => {
+                            // Remove 'selected-scale' from all other list items
+                            document.querySelectorAll('#scale-suggestions li').forEach(item => {
+                                item.classList.remove('selected-scale');
+                            });
+                            // Add 'selected-scale' to the clicked item
+                            li.classList.add('selected-scale');
+                        });
+
+                        scaleSuggestionsList.appendChild(li);
+                        foundSuggestions = true;
+                    }
+                }
+            }
+
+            if (!foundSuggestions) {
+                scaleSuggestionsList.innerHTML = '<li>No common scales found for the selected notes. Try selecting more notes or a different combination.</li>';
+            }
+        }
+
+        // --- Real-time Audio Input Logic ---
+
+        async function startAudioInput() {
+            if (isAudioRunning) {
+                console.log("Audio input is already running.");
+                return;
+            }
+
+            // Ensure AudioContext is resumed/created
+            if (!audioContext || audioContext.state === 'closed') {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048; // Adjust for more or less frequency resolution
+                mediaStreamSource.connect(analyser);
+
+                isAudioRunning = true;
+                clearNotes(); // Clear previously selected notes
+                startPitchDetection();
+                console.log("Audio input started.");
+                startAudioButton.disabled = true;
+                stopAudioButton.disabled = false;
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                alert('Could not start audio input. Please ensure microphone access is granted.');
+                isAudioRunning = false;
+                startAudioButton.disabled = false;
+                stopAudioButton.disabled = true;
+            }
+        }
+
+        function stopAudioInput() {
+            if (!isAudioRunning) {
+                console.log("Audio input is not running.");
+                return;
+            }
+
+            cancelAnimationFrame(animationFrameId);
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+                // Stop all tracks on the stream
+                mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close().then(() => {
+                    console.log("AudioContext closed.");
+                });
+            }
+            isAudioRunning = false;
+            console.log("Audio input stopped.");
+            startAudioButton.disabled = false;
+            stopAudioButton.disabled = true;
+        }
+
+        // Basic Pitch Detection Function (Autocorrelation-like)
+        function getPitch(audioBuffer) {
+            const sampleRate = audioContext.sampleRate;
+            const bufferSize = audioBuffer.length;
+            const MIN_FREQ = 80; // Minimum detectable frequency (e.g., E2)
+            const MAX_FREQ = 1000; // Maximum detectable frequency (e.g., C6)
+
+            let bestCorrelation = -1;
+            let bestOffset = -1;
+
+            // Simple autocorrelation
+            for (let offset = 0; offset < bufferSize; offset++) {
+                let correlation = 0;
+                for (let i = 0; i < bufferSize - offset; i++) {
+                    correlation += audioBuffer[i] * audioBuffer[i + offset];
+                }
+                if (correlation > bestCorrelation) {
+                    bestCorrelation = correlation;
+                    bestOffset = offset;
+                }
+            }
+
+            if (bestOffset === 0) return 0; // No clear pitch
+
+            const frequency = sampleRate / bestOffset;
+
+            // Filter out frequencies outside a reasonable vocal/instrument range
+            if (frequency < MIN_FREQ || frequency > MAX_FREQ) return 0;
+
+            return frequency;
+        }
+
+        // Converts frequency to MIDI note number (69 = A4 = 440Hz)
+        function frequencyToMidi(frequency) {
+            if (frequency === 0) return null;
+            return 12 * (Math.log(frequency / 440) / Math.log(2)) + 69;
+        }
+
+        function startPitchDetection() {
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Float32Array(bufferLength); // Raw time-domain data
+
+            const detectPitch = () => {
+                if (!isAudioRunning) {
+                    return; // Stop if audio is no longer running
+                }
+
+                analyser.getFloatTimeDomainData(dataArray);
+
+                const pitch = getPitch(dataArray);
+                if (pitch > 0) {
+                    const midiNote = frequencyToMidi(pitch);
+                    if (midiNote !== null) {
+                        const noteClass = Math.round(midiNote) % 12;
+                        // Add to playedNotes only if it's a new note or needs re-highlighting
+                        if (!playedNotes.has(noteClass)) {
+                            toggleNote(noteClass, document.querySelector(`.note-button[data-midi-class="${noteClass}"]`));
+                        }
+                    }
+                }
+
+                animationFrameId = requestAnimationFrame(detectPitch);
+            };
+            animationFrameId = requestAnimationFrame(detectPitch);
+        }
+
+
+        // Event Listeners
+        clearNotesButton.addEventListener('click', clearNotes);
+        identifyScalesButton.addEventListener('click', identifyScales);
+        startAudioButton.addEventListener('click', startAudioInput);
+        stopAudioButton.addEventListener('click', stopAudioInput);
+
+
+        window.onload = () => {
+            createNoteInputButtons(); // Create the note buttons on page load
+            updatePlayedNotesDisplay();
+            stopAudioButton.disabled = true; // Initially disable stop button
+        };
+    </script>
+</body>
+</html>
